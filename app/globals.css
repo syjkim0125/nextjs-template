@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  
+  body {
+    background-color: white;
+    color: black;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .delay-1000 {
+    animation-delay: 1000ms;
+  }
+  
+  .delay-500 {
+    animation-delay: 500ms;
+  }
+}
