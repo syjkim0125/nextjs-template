@@ -2,8 +2,6 @@
 // Imports and renders LoginPage from features
 
 import { LoginPage } from '@/features/authentication/presentation';
-import { authContainer } from '@/features/authentication/application/di/AuthContainer';
-import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -12,15 +10,7 @@ export const metadata: Metadata = {
   robots: 'noindex, nofollow', // Don't index login pages
 };
 
-// Server Component - checks auth before rendering
-export default async function Page() {
-  // Redirect if already authenticated
-  try {
-    await authContainer.nextAuthService.redirectIfAuthenticated();
-  } catch (error) {
-    // If check fails, continue to login page
-    console.warn('Auth check failed:', error);
-  }
-
+// Server Component - renders login page without auth check
+export default function Page() {
   return <LoginPage />;
 }

@@ -1,75 +1,96 @@
 'use client';
 
-// Presentation Hook for client-side authentication state
-// Only UI logic and user interaction
+// OAuth2 Authentication Hook
+// Handles Google OAuth2 authentication only
 
-import { useState, useTransition } from 'react';
-import { LoginUseCaseOutput } from '../../domain/usecases/LoginUseCase';
-import { loginAction, logoutAction } from '../../infrastructure/actions/auth';
+import { useState, useTransition, useEffect } from 'react';
+import {
+    initiateGoogleLogin,
+    logoutOAuth,
+} from '../../infrastructure/actions/oauth';
+import { User, UserFactory } from '../../domain/user';
+import { getUserInfoFromBackend } from '../../infrastructure/actions/user';
 
 export interface UseAuthReturn {
-  isLoading: boolean;
-  error: string | null;
-  login: (formData: FormData) => Promise<LoginUseCaseOutput>;
-  logout: () => Promise<void>;
-  clearError: () => void;
+    user: User | null;
+    isLoading: boolean;
+    error: string | null;
+    isAuthenticated: boolean;
+    loginWithGoogle: () => Promise<void>;
+    logout: () => Promise<void>;
+    setUserFromAccessToken: (token: string) => Promise<boolean>;
+    clearError: () => void;
 }
 
 export function useAuth(): UseAuthReturn {
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
+    const [error, setError] = useState<string | null>(null);
+    const [user, setUser] = useState<User | null>(null);
 
-  const login = async (formData: FormData): Promise<LoginUseCaseOutput> => {
-    setError(null);
-    
-    return new Promise((resolve) => {
-      startTransition(async () => {
+    // Initialize auth state - don't automatically try to refresh
+    // Only refresh when user explicitly tries to access protected content
+    useEffect(() => {
+        // Set initial state as not authenticated
+        // User will be authenticated through OAuth callback or manual refresh
+        setUser(null);
+    }, []);
+
+    const loginWithGoogle = async (): Promise<void> => {
         try {
-          // Use Server Action instead of direct fetch
-          const result = await loginAction(formData);
-          
-          if (!result.success && result.error) {
-            setError(result.error);
-          }
-          
-          resolve(result);
+            setError(null);
+            await initiateGoogleLogin();
         } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : 'Login failed';
-          setError(errorMessage);
-          resolve({
-            success: false,
-            error: errorMessage,
-          });
+            setError(
+                err instanceof Error ? err.message : 'Google login failed'
+            );
         }
-      });
-    });
-  };
+    };
 
-  const logout = async (): Promise<void> => {
-    setError(null);
-    
-    return new Promise((resolve) => {
-      startTransition(async () => {
+    const logout = async (): Promise<void> => {
+        setError(null);
+        return new Promise((resolve) => {
+            startTransition(async () => {
+                try {
+                    // Clear client-side state
+                    setUser(null);
+
+                    // Call logout action (redirects to login)
+                    await logoutOAuth();
+                    resolve();
+                } catch (err) {
+                    const errorMessage =
+                        err instanceof Error ? err.message : 'Logout failed';
+                    setError(errorMessage);
+                    resolve();
+                }
+            });
+        });
+    };
+
+    const setUserFromAccessToken = async (token: string): Promise<boolean> => {
         try {
-          // Use Server Action for logout
-          await logoutAction();
-          resolve();
+            setError(null);
+            const userDto = await getUserInfoFromBackend(token);
+            if (userDto) {
+                const domainUser = UserFactory.toDomain(userDto);
+                setUser(domainUser);
+                return true;
+            }
+            return false;
         } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : 'Logout failed';
-          setError(errorMessage);
-          resolve();
+            setUser(null);
+            return false;
         }
-      });
-    });
-  };
+    };
 
-  const clearError = () => setError(null);
-
-  return {
-    isLoading: isPending,
-    error,
-    login,
-    logout,
-    clearError,
-  };
+    return {
+        user,
+        isLoading: isPending,
+        error,
+        isAuthenticated: !!user,
+        loginWithGoogle,
+        logout,
+        setUserFromAccessToken,
+        clearError: () => setError(null),
+    };
 }
