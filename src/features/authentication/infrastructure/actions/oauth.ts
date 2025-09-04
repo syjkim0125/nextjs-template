@@ -27,21 +27,9 @@ export async function initiateGoogleLogin(): Promise<void> {
 export async function handleOAuthCallback(
     accessToken: string
 ): Promise<OAuth2Response> {
-    try {
-        // Verify the access token by attempting to get user info
-        const user = await getUserInfoFromBackend(accessToken);
-
-        if (!user) {
-            throw new Error('Failed to retrieve user information');
-        }
-
-        // Token is valid, backend will have set the refresh token cookie
-        // No need to store anything client-side
-        return { success: true };
-    } catch (error) {
-        console.error('OAuth callback error:', error);
-        return { success: false, error: 'Authentication failed' };
-    }
+    // For now, just return success if token exists
+    // Token validation will happen when actually using it
+    return { success: !!accessToken };
 }
 
 // Logout - clear all auth data
