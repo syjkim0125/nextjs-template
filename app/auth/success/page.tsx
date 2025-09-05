@@ -1,18 +1,36 @@
-// OAuth2 Success Page
-// Processes OAuth callback and redirects to debug page
+'use client';
 
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { useEffect } from 'react';
+import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
+import { AccessToken } from '@/features/authentication/domain/token';
+import { popTempAccessToken } from '@/features/authentication/infrastructure/actions/cleanup';
 
-export default async function AuthSuccessPage() {
-  // Get temporary access token from httpOnly cookie
-  const cookieStore = await cookies();
-  const tempAccessToken = cookieStore.get('tempAccessToken')?.value;
+function buildDestinationUrl(temp: string | null): string {
+    if (!temp) return '/login?error=no_token';
+    const token = new AccessToken(temp);
+    if (!token.isValid()) return '/login?error=invalid_token';
+    return `/debug?token=${encodeURIComponent(token.getValue())}`;
+}
 
-  // Redirect to debug page with token if available
-  if (tempAccessToken) {
-    redirect(`/debug?token=${encodeURIComponent(tempAccessToken)}`);
-  } else {
-    redirect('/login?error=no_token');
-  }
+export default function AuthSuccessPage() {
+    const router = useRouter();
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const tempAccessToken = await popTempAccessToken();
+                const path = buildDestinationUrl(tempAccessToken);
+                router.replace(path as Route);
+            } catch {
+                router.replace('/login?error=cleanup_failed' as Route);
+            }
+        })();
+    }, [router]);
+
+    return (
+        <div className="min-h-screen flex items-center justify-center text-gray-600">
+            Processing authentication...
+        </div>
+    );
 }

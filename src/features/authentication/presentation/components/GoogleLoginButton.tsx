@@ -26,9 +26,9 @@ export function GoogleLoginButton({
                 onClick={handleGoogleLogin}
                 disabled={disabled || isLoading}
                 className={`
-          w-full flex items-center justify-center gap-3 px-4 py-3 
-          border border-gray-300 rounded-lg hover:bg-gray-50 
-          transition-colors duration-200 font-medium text-gray-700
+          w-full flex items-center justify-center gap-3 px-6 py-4 
+          bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md
+          transition-all duration-200 font-medium text-gray-700 shadow-sm
           disabled:opacity-50 disabled:cursor-not-allowed
           ${className}
         `}
