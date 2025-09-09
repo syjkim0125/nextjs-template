@@ -2,10 +2,15 @@
 
 import { apiJson } from './api';
 
-// Get user info from backend using access token
-export async function getUserInfoFromBackend(
+type GetUserResult = {
+    id: string;
+    name: string;
+    email: string;
+};
+
+export const getUserByTokenAction = async (
     accessToken: string
-): Promise<{ id: string; name: string; email: string } | null> {
+): Promise<GetUserResult | null> => {
     try {
         const backendUrl =
             process.env.BACKEND_USER_URL || 'http://localhost:3001';
@@ -21,16 +26,11 @@ export async function getUserInfoFromBackend(
             token: accessToken,
             autoRefreshOn401: true,
         });
-        console.log('getUserInfoFromBackend userData:', userData);
+        console.log('getUserByToken userData:', userData);
 
-        // Return plain JSON (serializable) for Client Components
-        return {
-            id: userData.id,
-            name: userData.name,
-            email: userData.email,
-        };
+        return userData;
     } catch (error) {
         console.error('Error fetching user info:', error);
         return null;
     }
-}
+};

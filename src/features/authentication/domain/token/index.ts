@@ -1,2 +1,2 @@
-// Token Domain Exports
 export { AccessToken } from './AccessToken';
+export { AccessTokenFactory } from './AccessTokenFactory';

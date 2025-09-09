@@ -28,7 +28,9 @@ export function LoginPage() {
                                     <div className="w-6 h-6 sm:w-8 sm:h-8 bg-pink-400 rounded-full flex-shrink-0"></div>
                                 </div>
                                 {/* Heart between */}
-                                <div className="text-pink-400 text-xl sm:text-2xl flex-shrink-0">❤️</div>
+                                <div className="text-pink-400 text-xl sm:text-2xl flex-shrink-0">
+                                    ❤️
+                                </div>
                                 {/* Male figure - 정확한 원형 유지 */}
                                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
                                     <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-400 rounded-full flex-shrink-0"></div>
