@@ -92,17 +92,19 @@ this project follows a 4-layer Clean Architecture structure:
 ```
 src/
 ├── features/
-│    ├── login/                      # feature name
+│    ├── login/                      # Feature name
 │    │    ├── domain/                # Pure business logic (innermost layer)
 │    │    │   ├── entities/          # Business entities (User, Match, MatchingSession)
 │    │    │   ├── usecases/          # Business use cases (StartMatching, SwipeAction)
 │    │    │   └── repositories/      # Repository interfaces (no implementations)
+│    │    │   └── factories/         # Create Domain Entity
 │    │    ├── application/           # Application services & orchestration
+│    │    │   └── interfaces/        # service interfaces
 │    │    │   └── services/          # Coordinate domain logic (MatchingService)
 │    │    ├── infrastructure/        # External systems & implementations (outermost layer)
-│    │    │   ├── api/               # HTTP clients, API integrations
+│    │    │   ├── actions/           # HTTP clients, API integrations (server actions)
 │    │    │   ├── repositories/      # Repository implementations + Anti-corruption layer
-│    │    │   └── storage/           # Local storage, session storage
+│    │    │   └── di/                # For di container
 │    │    ├── presentation/          # UI layer
 │    │    │   ├── components/        # React components
 │    │    │   ├── pages/             # Page components
@@ -117,12 +119,8 @@ src/
 ├── app/                             # Next.js App Router (routing layer)
 │   ├── login/
 │   │   ├── page.tsx                 # Imports LoginPage from features/login/presentation
-│   │   ├── loading.tsx              # Loading UI
-│   │   └── error.tsx                # Error UI
 │   ├── dashboard/
 │   │   ├── page.tsx                 # Imports DashboardPage from features/dashboard/presentation
-│   │   └── layout.tsx               # Dashboard-specific layout
-│   ├── layout.tsx                   # Root layout
 │   └── not-found.tsx                # 404 page
 
 ```
@@ -212,12 +210,12 @@ import { LoginPage } from '@/features/login/presentation/pages/LoginPage';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Login',
-  description: 'User login page',
+    title: 'Login',
+    description: 'User login page',
 };
 
 export default function Page() {
-  return <LoginPage />;
+    return <LoginPage />;
 }
 
 // features/login/presentation/pages/LoginPage.tsx (비즈니스 로직)
@@ -225,14 +223,14 @@ import { LoginForm } from '../components/LoginForm';
 import { useLoginService } from '../hooks/useLoginService';
 
 export function LoginPage() {
-  const loginService = useLoginService(); // Application 레이어 호출
-  
-  return (
-    <div className="login-container">
-      <h1>Login</h1>
-      <LoginForm onSubmit={loginService.login} />
-    </div>
-  );
+    const loginService = useLoginService(); // Application 레이어 호출
+
+    return (
+        <div className="login-container">
+            <h1>Login</h1>
+            <LoginForm onSubmit={loginService.login} />
+        </div>
+    );
 }
 ```
 
@@ -241,14 +239,14 @@ export function LoginPage() {
 ```json
 // tsconfig.json
 {
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/features/*": ["src/features/*"],
-      "@/commons/*": ["src/commons/*"],
-      "@/app/*": ["app/*"]
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/features/*": ["src/features/*"],
+            "@/commons/*": ["src/commons/*"],
+            "@/app/*": ["app/*"]
+        }
     }
-  }
 }
 ```
 
@@ -270,28 +268,28 @@ export * from './hooks';
 ```typescript
 // features/user/infrastructure/api/userApi.ts
 export class UserApiClient {
-  async getUser(id: string): Promise<ApiUser> {
-    // Next.js Data Cache 활용
-    const response = await fetch(`/api/users/${id}`, {
-      next: { 
-        revalidate: 300,  // 5분 캐시
-        tags: ['user', `user-${id}`]
-      }
-    });
-    return response.json();
-  }
+    async getUser(id: string): Promise<ApiUser> {
+        // Next.js Data Cache 활용
+        const response = await fetch(`/api/users/${id}`, {
+            next: {
+                revalidate: 300, // 5분 캐시
+                tags: ['user', `user-${id}`],
+            },
+        });
+        return response.json();
+    }
 
-  async updateUser(id: string, data: UpdateUserRequest): Promise<void> {
-    await fetch(`/api/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    // 관련 캐시 무효화
-    revalidateTag(`user-${id}`);
-    revalidateTag('user-list');
-  }
+    async updateUser(id: string, data: UpdateUserRequest): Promise<void> {
+        await fetch(`/api/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        // 관련 캐시 무효화
+        revalidateTag(`user-${id}`);
+        revalidateTag('user-list');
+    }
 }
 ```
 
@@ -300,28 +298,28 @@ export class UserApiClient {
 ```typescript
 // features/user/application/services/UserService.ts
 export class UserService {
-  constructor(private userRepository: UserRepository) {}
+    constructor(private userRepository: UserRepository) {}
 
-  async getUser(id: UserId): Promise<User> {
-    // Repository(Infrastructure)에서 캐시된 데이터 활용
-    return this.userRepository.findById(id);
-  }
+    async getUser(id: UserId): Promise<User> {
+        // Repository(Infrastructure)에서 캐시된 데이터 활용
+        return this.userRepository.findById(id);
+    }
 
-  async updateUser(id: UserId, data: UpdateUserData): Promise<void> {
-    const user = await this.userRepository.findById(id);
-    user.update(data); // Domain logic
-    await this.userRepository.save(user);
-    // Infrastructure layer에서 자동으로 캐시 무효화
-  }
+    async updateUser(id: UserId, data: UpdateUserData): Promise<void> {
+        const user = await this.userRepository.findById(id);
+        user.update(data); // Domain logic
+        await this.userRepository.save(user);
+        // Infrastructure layer에서 자동으로 캐시 무효화
+    }
 }
 ```
 
 **캐시 레이어별 활용:**
 
-- **Request Memoization**: Infrastructure layer API 호출에서 자동 적용
-- **Data Cache**: Infrastructure layer에서 fetch 캐시 설정 
-- **Full Route Cache**: App Router 페이지에서 자동 적용
-- **Router Cache**: 클라이언트 네비게이션에서 자동 활용
+-   **Request Memoization**: Infrastructure layer API 호출에서 자동 적용
+-   **Data Cache**: Infrastructure layer에서 fetch 캐시 설정
+-   **Full Route Cache**: App Router 페이지에서 자동 적용
+-   **Router Cache**: 클라이언트 네비게이션에서 자동 활용
 
 **{opinion}**: 이 구조에서 Next.js 캐시는 Infrastructure layer에 격리되어 도메인 로직을 오염시키지 않으면서도 성능상 이점을 모두 활용할 수 있습니다.
 
